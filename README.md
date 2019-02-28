@@ -1,2 +1,2 @@
 # Snake in Python
-Using PyGame
+Implementing the popular computer game "Snake", using the PyGame module.
