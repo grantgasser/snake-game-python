@@ -12,6 +12,22 @@ red = 0
 green = 0
 blue = 0
 
+#colors for the scoring
+box_color = (0,0,0)
+text_color = (64,224,208)
+
+#to store coordinates of all cubes in the snake
+x_coords = []
+y_coords = []
+
+#for shift
+temp_x_list = []
+temp_y_list = []
+
+#to append new cube at end of lists
+last_x = 0
+last_y = 0
+
 #screen size and speed of snake
 screen_x = 0
 screen_y = 0
@@ -31,7 +47,7 @@ snack_red = 255
 snack_green = 255
 snack_blue = 0
 
-# function(get-input)
+# get size of screen, color, and speed of game
 def get_input():
     correct_color = False
 
@@ -66,10 +82,10 @@ def get_input():
             correct_color = True
 
     #Get speed from user
-    velo = int(input('Please choose the speed of the game (5-15): '))
-    while velo < 5:
+    velo = int(input('Please choose the speed of the game (10-15): '))
+    while velo < 10:
         print('Pick it up, you are going too slow!')
-        velo = int(input('Please choose the speed of the game (5-15): '))
+        velo = int(input('Please choose the speed of the game (10-15): '))
 
     while  velo > 15:
         print('Slow down, do you want a ticket?')
@@ -77,12 +93,27 @@ def get_input():
 
     return screen_x, screen_y, color, velo
 
+def get_score():
+    #create the box
+    box = pygame.draw.rect(win, box_color, ((screen_x/3), (screen_y/2.5), (screen_x/2), (screen_y/5)))
+    #sets the font
+    font = pygame.font.SysFont("comicsansms", 35)
+    #writes the text
+    text = font.render("YOUR SCORE: " + str(score), True, text_color)
+    #outputs the text
+    win.blit(text,(box))
+    #redraws the screen
+    pygame.display.update()
+    pygame.time.wait(3000)
+    pygame.quit()
+
+
 #get user input
 screen_x, screen_y, color, velo = get_input()
 
-#use these vars to set init loc of snake (center of screen)
-x_cube = screen_x / 2
-y_cube = screen_y / 2
+#head is first coordinate, start in middle of screen
+x_coords.append(screen_x/2)
+y_coords.append(screen_y/2)
 
 #set colors
 if(color == 'r'):
@@ -105,9 +136,12 @@ pygame.display.set_caption('Snake')
 snack_x = random.randint(MARGIN, screen_x-MARGIN)
 snack_y = random.randint(MARGIN, screen_y-MARGIN)
 
-#draw snake
-pygame.draw.rect(win, (snack_red, snack_green, snack_blue), (snack_x, snack_y, CUBE_WIDTH, CUBE_HEIGHT))
-pygame.display.update()
+#draw snack initially
+def draw_snack():
+    pygame.draw.rect(win, (snack_red, snack_green, snack_blue), (snack_x, snack_y, CUBE_WIDTH, CUBE_HEIGHT))
+    pygame.display.update()
+
+draw_snack()
 
 run = True
 
@@ -146,28 +180,79 @@ while run:
         #remember last direction, can't go backwards in snake
         last_key = key
 
-    x_cube = x_cube + velo_x
-    y_cube = y_cube + velo_y
+    #save prev head location and set new one
+    prev_head_x = x_coords[0]
+    prev_head_y = y_coords[0]
+    x_coords[0] += velo_x
+    y_coords[0] += velo_y
+
+    #DETERMINE IF LOSE HERE
+    # Set boundaries, lose if go off screen
+    if x_coords[0] < 0 or x_coords[0] > screen_x or y_coords[0] < 0 or y_coords[0] > screen_y:
+        run = False
+
+
+    #if run into self
+    i = 3
+    assert(len(x_coords) == len(y_coords))
+    while i < len(x_coords):
+        if(x_coords[0] == x_coords[i] and y_coords[0] == y_coords[i]):
+            run = False
+        i += 1
 
 
     #if snake eats snack
-    if(abs(snack_x-x_cube) <= 10 and abs(snack_y-y_cube) <= 10):
+    if(abs(snack_x-x_coords[0]) <= MARGIN and abs(snack_y-y_coords[0]) <= MARGIN) and run:
         snack_x = random.randint(1, screen_x)
         snack_y = random.randint(1, screen_y)
+
+        x_coords.append(last_x)
+        y_coords.append(last_y)
+
         score += 1
 
-    # Set boundaries
-    if x_cube < 0 or x_cube > screen_x or y_cube < 0 or y_cube > screen_y:
-        run = False
 
     #reset background
-    win.fill((0,0,0))
+    win.fill((0,0,0,0))
 
-    #redraw snake and redraw snack
-    pygame.draw.rect(win, (red, green, blue), (x_cube, y_cube, CUBE_WIDTH, CUBE_HEIGHT))
-    pygame.draw.rect(win, (snack_red, snack_green, snack_blue), (snack_x, snack_y, CUBE_WIDTH, CUBE_HEIGHT))
-    pygame.display.update()
+    #shift values of cubes so that each cube follows the one before it
+    temp_x_list.clear()
+    temp_y_list.clear()
+    i = 1
 
-print("Score:", score)
+    assert(len(x_coords) == len(y_coords))
+    while i < len(x_coords) and run:
+        if i == 1:
+            temp_x_list.append(x_coords[i])
+            temp_y_list.append(y_coords[i])
+            x_coords[i] = prev_head_x
+            y_coords[i] = prev_head_y
 
-pygame.quit()
+        else:
+            temp_x_list.append(x_coords[i])
+            temp_y_list.append(y_coords[i])
+            x_coords[i] = temp_x_list[i-2]
+            y_coords[i] = temp_y_list[i-2]
+
+        i += 1
+
+
+    #draw all snake cubes
+    i = 0
+
+    assert(len(x_coords) == len(y_coords))
+    while i < len(x_coords) and run:
+        pygame.draw.rect(win, (red, green, blue), (x_coords[i], y_coords[i], CUBE_WIDTH, CUBE_HEIGHT))
+        pygame.display.update()
+        i += 1
+
+    #draw snack
+    if run:
+        draw_snack()
+
+        last_x = x_coords[len(x_coords)-1]
+        last_y = y_coords[len(y_coords)-1]
+
+#displays the score
+print('\nThanks for playing!\n')
+get_score()
